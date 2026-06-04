@@ -6,7 +6,7 @@
   "scripts": {
     "format": "sort-package-json && prettier --write \"**/*.{js,json,md,yml}\" && node scripts/sort-json.js",
     "format:check": "prettier --check \"**/*.{js,json,md,yml}\"",
-    "migrate": "node -r dotenv/config migrations/run-migrations.js",
+    "migrate": "node -r dotenv/config run-migrations.js",
     "export:model": "node scripts/export-model.js",
     "generate:migration": "node scripts/generate-migration.js content-model-export.json"
   },
