@@ -18,12 +18,12 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 11.2.2
+          version: 9.15.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '20'
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -40,7 +40,9 @@ jobs:
           pnpm exec contentful space environment create \
             --environment-id staging-${GITHUB_SHA::7} \
             --name "Staging ${GITHUB_SHA::7}" \
-            --source-environment-id master
+            --source-environment-id master \
+            --space-id ${{ secrets.CONTENTFUL_SPACE_ID }} \
+            --management-token ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
 
       - name: Run migrations on staging
         env:
@@ -57,7 +59,9 @@ jobs:
         run: |
           pnpm exec contentful space environment-alias update \
             --alias-id master \
-            --target-environment-id staging-${GITHUB_SHA::7}
+            --target-environment-id staging-${GITHUB_SHA::7} \
+            --space-id ${{ secrets.CONTENTFUL_SPACE_ID }} \
+            --management-token ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
 
       - name: Cleanup old environments
         if: success()
@@ -66,10 +70,12 @@ jobs:
           CONTENTFUL_MANAGEMENT_TOKEN: ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
         run: |
           pnpm exec contentful space environment list \
-            --management-token $CONTENTFUL_MANAGEMENT_TOKEN \
-            --space-id $CONTENTFUL_SPACE_ID | \
+            --space-id ${{ secrets.CONTENTFUL_SPACE_ID }} \
+            --management-token ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }} | \
             grep -v "master" | \
             tail -n +6 | \
             awk '{print $1}' | \
             xargs -I {} pnpm exec contentful space environment delete \
-              --environment-id {} || true
+              --environment-id {} \
+              --space-id ${{ secrets.CONTENTFUL_SPACE_ID }} \
+              --management-token ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }} || true
