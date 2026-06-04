@@ -6,6 +6,10 @@ on:
     paths:
       - 'migrations/**'
       - '.github/workflows/contentful-migrate.yml'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'scripts/**'
+  workflow_dispatch:
 
 jobs:
   migrate:
