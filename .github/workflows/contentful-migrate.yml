@@ -36,50 +36,9 @@ jobs:
       - name: Check formatting
         run: pnpm format:check
 
-      - name: Create staging environment
+      - name: Run migrations on master
         env:
           CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
           CONTENTFUL_MANAGEMENT_TOKEN: ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
-        run: |
-          pnpm exec contentful space environment create \
-            --environment-id staging-${GITHUB_SHA::7} \
-            --name "Staging ${GITHUB_SHA::7}" \
-            --source-environment-id master \
-            --space-id ${{ secrets.CONTENTFUL_SPACE_ID }} \
-            --management-token ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
-
-      - name: Run migrations on staging
-        env:
-          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
-          CONTENTFUL_MANAGEMENT_TOKEN: ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
-          CONTENTFUL_ENVIRONMENT: staging-${GITHUB_SHA::7}
+          CONTENTFUL_ENVIRONMENT: master
         run: pnpm migrate
-
-      - name: Promote to master
-        if: success()
-        env:
-          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
-          CONTENTFUL_MANAGEMENT_TOKEN: ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
-        run: |
-          pnpm exec contentful space environment-alias update \
-            --alias-id master \
-            --target-environment-id staging-${GITHUB_SHA::7} \
-            --space-id ${{ secrets.CONTENTFUL_SPACE_ID }} \
-            --management-token ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
-
-      - name: Cleanup old environments
-        if: success()
-        env:
-          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
-          CONTENTFUL_MANAGEMENT_TOKEN: ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
-        run: |
-          pnpm exec contentful space environment list \
-            --space-id ${{ secrets.CONTENTFUL_SPACE_ID }} \
-            --management-token ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }} | \
-            grep -v "master" | \
-            tail -n +6 | \
-            awk '{print $1}' | \
-            xargs -I {} pnpm exec contentful space environment delete \
-              --environment-id {} \
-              --space-id ${{ secrets.CONTENTFUL_SPACE_ID }} \
-              --management-token ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }} || true
