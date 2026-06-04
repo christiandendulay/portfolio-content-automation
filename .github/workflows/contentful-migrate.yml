@@ -1,0 +1,75 @@
+name: Contentful Migration
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'migrations/**'
+      - '.github/workflows/contentful-migrate.yml'
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.2.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Check formatting
+        run: pnpm format:check
+
+      - name: Create staging environment
+        env:
+          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
+          CONTENTFUL_MANAGEMENT_TOKEN: ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
+        run: |
+          pnpm exec contentful space environment create \
+            --environment-id staging-${GITHUB_SHA::7} \
+            --name "Staging ${GITHUB_SHA::7}" \
+            --source-environment-id master
+
+      - name: Run migrations on staging
+        env:
+          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
+          CONTENTFUL_MANAGEMENT_TOKEN: ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
+          CONTENTFUL_ENVIRONMENT: staging-${GITHUB_SHA::7}
+        run: pnpm migrate
+
+      - name: Promote to master
+        if: success()
+        env:
+          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
+          CONTENTFUL_MANAGEMENT_TOKEN: ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
+        run: |
+          pnpm exec contentful space environment-alias update \
+            --alias-id master \
+            --target-environment-id staging-${GITHUB_SHA::7}
+
+      - name: Cleanup old environments
+        if: success()
+        env:
+          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
+          CONTENTFUL_MANAGEMENT_TOKEN: ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
+        run: |
+          pnpm exec contentful space environment list \
+            --management-token $CONTENTFUL_MANAGEMENT_TOKEN \
+            --space-id $CONTENTFUL_SPACE_ID | \
+            grep -v "master" | \
+            tail -n +6 | \
+            awk '{print $1}' | \
+            xargs -I {} pnpm exec contentful space environment delete \
+              --environment-id {} || true
