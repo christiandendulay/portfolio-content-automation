@@ -6,9 +6,10 @@
   "scripts": {
     "format": "sort-package-json && prettier --write \"**/*.{js,json,md,yml}\" && node scripts/sort-json.js",
     "format:check": "prettier --check \"**/*.{js,json,md,yml}\"",
-    "migrate": "node -r dotenv/config run-migrations.js",
+    "migrate": "cross-env-shell node run-migrations.js",
     "export:model": "node scripts/export-model.js",
-    "generate:migration": "node scripts/generate-migration.js content-model-export.json"
+    "generate:migration": "node scripts/generate-migration.js content-model-export.json",
+    "migrate:single": "node -r dotenv/config scripts/run-single-migration.js"
   },
   "keywords": [],
   "author": "",
@@ -21,10 +22,11 @@
       "onFail": "download"
     }
   },
-  "type": "module",
   "devDependencies": {
     "contentful-cli": "^4.0.1",
+    "contentful-management": "^12.5.1",
     "contentful-migration": "^5.0.0",
+    "cross-env": "^10.1.0",
     "dotenv": "^17.4.2",
     "prettier": "^3.8.3",
     "prettier-plugin-sort-json": "^4.2.0",
