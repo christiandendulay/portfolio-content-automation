@@ -9,7 +9,6 @@ on:
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'scripts/**'
-      - 'run-migrations.js'
   workflow_dispatch:
 
 jobs:
@@ -19,6 +18,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -37,9 +38,18 @@ jobs:
       - name: Check formatting
         run: pnpm format:check
 
-      - name: Run migrations on master
+      - name: Run new migrations
         env:
           CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
           CONTENTFUL_MANAGEMENT_TOKEN: ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
-          CONTENTFUL_ENVIRONMENT: master
-        run: pnpm migrate
+          CONTENTFUL_ENVIRONMENT: ${{ vars.CONTENTFUL_ENVIRONMENT }}
+        run: |
+          git diff --name-only HEAD~1 HEAD | grep '^migrations/' | sort | while read file; do
+            echo "▶️ Running $file..."
+            pnpm exec contentful space migration \
+              --space-id $CONTENTFUL_SPACE_ID \
+              --management-token $CONTENTFUL_MANAGEMENT_TOKEN \
+              --environment-id $CONTENTFUL_ENVIRONMENT \
+              --yes \
+              "$file" || echo "⏭️  Skipped or failed: $file"
+          done

@@ -113,7 +113,7 @@ pnpm format
 
 # 4. Test
 
-pnpm migrate
+pnpm migrate:single 11-add-github-url-to-project.js
 
 # 5. Commit
 
